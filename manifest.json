@@ -2,8 +2,12 @@
     "manifest_version": 3,
     "name": "SoundCloud-Shuffle",
     "version": "1.0",
-    "description": "True random shuffle for SoundCloud playlists and likes 🔀",
-    "permissions": ["activeTab"],
+    "description": "Soundcloud Player with true random shuffle for SoundCloud playlists and likes",
+    "permissions": ["tabs", "scripting", "activeTab"],
+    "host_permissions": ["https://soundcloud.com/*", "*://soundcloud.com/*"],
+    "background": {
+        "service_worker": "background.js"
+    },
     "action": {
         "default_popup": "popup.html",
         "default_icon": {
@@ -14,7 +18,13 @@
     },
     "content_scripts": [
         {
-            "matches": ["https://soundcloud.com/*"],
+            "matches": ["https://soundcloud.com/*", "*://soundcloud.com/*"],
+            "js": ["capture.js"],
+            "run_at": "document_start",
+            "all_frames": false
+        },
+        {
+            "matches": ["https://soundcloud.com/*", "*://soundcloud.com/*"],
             "js": ["content.js"],
             "run_at": "document_end",
             "all_frames": false
