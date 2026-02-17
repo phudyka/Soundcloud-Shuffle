@@ -1,0 +1,73 @@
+/* ═══════════════════════════════════════════
+   SoundCloud True Shuffle — In-page button
+   ═══════════════════════════════════════════ */
+
+.sc-true-shuffle-btn {
+    --sc-orange: #f50;
+    --sc-orange-hover: #e54e00;
+    --sc-orange-active: #cc4600;
+
+    font-family: "Interstate", "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Garuda, Verdana, Tahoma, sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    color: #fff;
+    background: var(--sc-orange);
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+    white-space: nowrap;
+    line-height: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+.sc-true-shuffle-btn:hover {
+    background: var(--sc-orange-hover);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.sc-true-shuffle-btn:active {
+    background: var(--sc-orange-active);
+    transform: scale(0.97);
+}
+
+/* ── Loading state ── */
+.sc-true-shuffle-btn.is-loading {
+    background: #333;
+    color: #aaa;
+    cursor: pointer; /* still clickable to cancel */
+}
+
+.sc-true-shuffle-btn.is-loading::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 30%;
+    background: var(--sc-orange);
+    animation: sc-shuffle-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes sc-shuffle-slide {
+    0%   { left: -30%; }
+    100% { left: 100%; }
+}
+
+/* ── Error state ── */
+.sc-true-shuffle-btn.is-error {
+    background: #c33;
+    cursor: default;
+}
+
+/* ── Size variants (SoundCloud compat) ── */
+.sc-true-shuffle-btn.sc-button-large {
+    padding: 8px 18px;
+    font-size: 14px;
+}
+
+.sc-true-shuffle-btn.sc-button-medium {
+    padding: 6px 14px;
+    font-size: 12px;
+}

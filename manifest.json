@@ -1,0 +1,29 @@
+{
+    "manifest_version": 3,
+    "name": "SoundCloud-Shuffle",
+    "version": "3.1",
+    "description": "True random shuffle for SoundCloud playlists and likes — shuffles every track, not just a subset.",
+    "permissions": ["activeTab"],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "Icons/icon-16.png",
+            "48": "Icons/icon-48.png",
+            "128": "Icons/icon-128.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://soundcloud.com/*"],
+            "js": ["content.js"],
+            "css": ["style.css"],
+            "run_at": "document_end",
+            "all_frames": false
+        }
+    ],
+    "icons": {
+        "16": "Icons/icon-16.png",
+        "48": "Icons/icon-48.png",
+        "128": "Icons/icon-128.png"
+    }
+}
