@@ -1,8 +1,5 @@
 'use strict';
 
-// ════════════════════════════════════════════
-//  CONSTANTS
-// ════════════════════════════════════════════
 const PAGE = Object.freeze({
     NONE: 0,
     LIKES: 1,
@@ -18,11 +15,8 @@ const OBSERVER_DEBOUNCE_MS = 250;
 const FALLBACK_CHECK_MS = 5_000;
 const QUEUE_SETTLE_MS = 2_000;
 
-// ════════════════════════════════════════════
-//  STATE
-// ════════════════════════════════════════════
 const state = {
-    phase: 'idle', // 'idle' | 'loading' | 'playing'
+    phase: 'idle',
     scrollTimer: 0,
     settleTimer: 0,
     observer: null,
@@ -30,15 +24,11 @@ const state = {
     observerDebounce: 0,
     lastPath: location.pathname,
     abortCtrl: null,
-    // Cached DOM references — cleared on cleanup
     queueEl: null,
     scrollEl: null,
     heightEl: null,
 };
 
-// ════════════════════════════════════════════
-//  DOM UTILITIES
-// ════════════════════════════════════════════
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -47,10 +37,6 @@ function clickEl(el) {
     return false;
 }
 
-/**
- * Returns a promise that resolves when the selector appears.
- * Respects AbortSignal for clean cancellation.
- */
 function waitFor(selector, timeout = 2000, signal = null) {
     return new Promise((resolve, reject) => {
         const el = $(selector);
@@ -69,9 +55,6 @@ function waitFor(selector, timeout = 2000, signal = null) {
     });
 }
 
-/**
- * Abortable sleep.
- */
 function sleep(ms, signal = null) {
     return new Promise((resolve, reject) => {
         if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
@@ -83,9 +66,6 @@ function sleep(ms, signal = null) {
     });
 }
 
-/**
- * Fisher-Yates shuffle — O(n), uniform distribution, in-place.
- */
 function fisherYatesShuffle(arr) {
     for (let i = arr.length - 1; i > 0; i--) {
         const j = (Math.random() * (i + 1)) | 0;
@@ -94,9 +74,6 @@ function fisherYatesShuffle(arr) {
     return arr;
 }
 
-// ════════════════════════════════════════════
-//  PAGE DETECTION
-// ════════════════════════════════════════════
 function getPageType() {
     const p = location.pathname;
     if (p.includes('/discover/sets/')) return PAGE.DISCOVER;
@@ -116,9 +93,6 @@ function getTrackListSelector(type) {
     }
 }
 
-// ════════════════════════════════════════════
-//  QUEUE PANEL CONTROL
-// ════════════════════════════════════════════
 function isQueueOpen() {
     const q = $('.queue');
     return q ? q.classList.contains('m-visible') : false;
@@ -130,9 +104,6 @@ function setQueueOpen(shouldOpen) {
     }
 }
 
-// ════════════════════════════════════════════
-//  CLEANUP
-// ════════════════════════════════════════════
 function cancelScrollPhase() {
     if (state.scrollTimer) {
         clearTimeout(state.scrollTimer);
@@ -172,20 +143,12 @@ function fullCleanup() {
     cancelObserver();
 }
 
-// ════════════════════════════════════════════
-//  STATUS BROADCAST (to popup)
-// ════════════════════════════════════════════
 function broadcastStatus() {
     try {
         chrome.runtime.sendMessage({ type: 'statusUpdate', phase: state.phase });
-    } catch { /* popup closed — ignore */ }
+    } catch { }
 }
 
-// ════════════════════════════════════════════
-//  SCROLL-LOAD LOOP
-//  Uses recursive setTimeout (not setInterval)
-//  to avoid accumulation if a tick is slow.
-// ════════════════════════════════════════════
 function scheduleScrollTick(btn) {
     if (state.phase !== 'loading') return;
     state.scrollTimer = setTimeout(() => {
@@ -200,7 +163,6 @@ function onScrollTick(btn) {
     if (!state.queueEl) state.queueEl = $('.queue');
     if (!state.queueEl) { scheduleScrollTick(btn); return; }
 
-    // Ensure queue stays open
     if (!state.queueEl.classList.contains('m-visible')) {
         setQueueOpen(true);
         scheduleScrollTick(btn);
@@ -210,13 +172,11 @@ function onScrollTick(btn) {
     if (!state.scrollEl) state.scrollEl = $('.queue__scrollableInner');
     if (!state.heightEl) state.heightEl = $('.queue__itemsHeight');
 
-    // Scroll to bottom to trigger lazy loading
     if (state.scrollEl && state.heightEl) {
         const height = parseInt(state.heightEl.style.height, 10) || 0;
         state.scrollEl.scrollTop = height;
     }
 
-    // The fallback divider means all queue items are loaded
     if ($('.queue__fallback')) {
         clearTimeout(state.scrollTimer);
         state.scrollTimer = 0;
@@ -226,22 +186,12 @@ function onScrollTick(btn) {
     }
 }
 
-// ════════════════════════════════════════════
-//  SHUFFLE EXECUTION
-//  1. Gather all queue item DOM nodes
-//  2. Fisher-Yates shuffle them
-//  3. Reinsert into the DOM in new order
-//  4. Toggle SoundCloud shuffle on
-//  5. Skip-next to start from random position
-// ════════════════════════════════════════════
 function performShuffle(btn) {
-    // ── Reorder queue items in the DOM ──
     const queueList = $('.queue__itemsList');
     if (queueList) {
         const items = $$('.queueItemView', queueList);
         if (items.length > 1) {
             fisherYatesShuffle(items);
-            // Batch DOM writes with a DocumentFragment
             const frag = document.createDocumentFragment();
             for (const item of items) frag.appendChild(item);
             queueList.appendChild(frag);
@@ -252,34 +202,26 @@ function performShuffle(btn) {
     updateButtonState(btn, 'idle');
     broadcastStatus();
 
-    // Toggle SoundCloud's native shuffle on (fresh activation)
     const shuffleBtn = $('.shuffleControl');
     if (shuffleBtn) {
         if (shuffleBtn.classList.contains('m-shuffling')) shuffleBtn.click();
         shuffleBtn.click();
     }
 
-    // Skip to begin playback from the new shuffled order
     clickEl($('.skipControl__next'));
-
-    // Close queue panel
     setQueueOpen(false);
 
-    // Return keyboard focus to play button
     const playCtrl = $('.playControl');
     if (playCtrl) playCtrl.focus();
 }
 
-// ════════════════════════════════════════════
-//  BUTTON STATE
-// ════════════════════════════════════════════
 function updateButtonState(btn, newState) {
     if (!btn) return;
     btn.classList.remove('is-loading', 'is-error');
 
     switch (newState) {
         case 'idle':
-            btn.textContent = '⬡ Shuffle Play';
+            btn.textContent = '🔀 Shuffle Play';
             btn.title = 'True random shuffle — all tracks';
             break;
         case 'loading':
@@ -296,11 +238,7 @@ function updateButtonState(btn, newState) {
     }
 }
 
-// ════════════════════════════════════════════
-//  MAIN CLICK HANDLER
-// ════════════════════════════════════════════
 async function onShuffleClick(btn) {
-    // Cancel if already loading
     if (state.phase === 'loading') {
         cancelScrollPhase();
         updateButtonState(btn, 'idle');
@@ -327,18 +265,15 @@ async function onShuffleClick(btn) {
     const children = trackList.children;
 
     try {
-        // ── Step 1: Reset the queue by playing track #2 then #1 ──
         clickEl($('.playButton', children[1]));
         await sleep(200, signal);
 
         clickEl($('.playButton', children[0]));
         await sleep(400, signal);
 
-        // Pause playback
         const playCtrl = $('.playControl');
         if (playCtrl?.classList.contains('playing')) playCtrl.click();
 
-        // ── Step 2: Add track #1 to "Next Up" ──
         const moreBtn = $('.sc-button-more', trackList);
         if (moreBtn) {
             moreBtn.click();
@@ -347,23 +282,15 @@ async function onShuffleClick(btn) {
                 addBtn.click();
             } catch (e) {
                 if (e.name === 'AbortError') throw e;
-                // Context menu didn't appear — continue
             }
         }
 
-        // ── Step 3: Open queue and start scroll-loading ──
         setQueueOpen(true);
-
         await sleep(QUEUE_SETTLE_MS, signal);
-
-        // Start the scroll-load loop
         scheduleScrollTick(btn);
 
     } catch (e) {
-        if (e.name === 'AbortError') {
-            // Cancelled — already cleaned up
-            return;
-        }
+        if (e.name === 'AbortError') return;
         console.error('[SoundCloud True Shuffle]', e);
         cancelScrollPhase();
         updateButtonState(btn, 'error');
@@ -371,9 +298,6 @@ async function onShuffleClick(btn) {
     }
 }
 
-// ════════════════════════════════════════════
-//  BUTTON CREATION & INSERTION
-// ════════════════════════════════════════════
 function createButton(type) {
     const btn = document.createElement('button');
     btn.className = BTN_CLASS + (
@@ -429,9 +353,6 @@ function tryInsertButton() {
     return false;
 }
 
-// ════════════════════════════════════════════
-//  MUTATION OBSERVER — button insertion
-// ════════════════════════════════════════════
 function startInsertionObserver() {
     cancelObserver();
     if (tryInsertButton()) return;
@@ -448,9 +369,6 @@ function startInsertionObserver() {
     state.observerTimeout = setTimeout(cancelObserver, OBSERVER_TIMEOUT_MS);
 }
 
-// ════════════════════════════════════════════
-//  SPA NAVIGATION
-// ════════════════════════════════════════════
 function onNavigate() {
     const path = location.pathname;
     if (path === state.lastPath) return;
@@ -477,18 +395,12 @@ history.replaceState = function (...args) {
 };
 window.addEventListener('popstate', onNavigate);
 
-// ════════════════════════════════════════════
-//  FALLBACK RE-INSERTION CHECK
-// ════════════════════════════════════════════
 setInterval(() => {
     if (state.phase !== 'idle') return;
     if (getPageType() === PAGE.NONE) return;
     if (!$('.' + BTN_CLASS)) startInsertionObserver();
 }, FALLBACK_CHECK_MS);
 
-// ════════════════════════════════════════════
-//  MESSAGE LISTENER (from popup)
-// ════════════════════════════════════════════
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'getStatus') {
         sendResponse({ phase: state.phase, page: getPageType() });
@@ -506,7 +418,4 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     }
 });
 
-// ════════════════════════════════════════════
-//  INIT
-// ════════════════════════════════════════════
 startInsertionObserver();

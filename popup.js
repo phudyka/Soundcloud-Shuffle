@@ -6,9 +6,9 @@ const btn    = document.getElementById('shuffleBtn');
 const footer = document.querySelector('.footer');
 
 const STATUS_MAP = {
-    idle:    { label: 'Ready',           dot: 'idle',    btn: true,  btnLabel: '⬡ Shuffle Play' },
+    idle:    { label: 'Ready',           dot: 'idle',    btn: true,  btnLabel: '🔀 Shuffle Play' },
     loading: { label: 'Loading tracks…', dot: 'loading', btn: true,  btnLabel: 'Cancel' },
-    playing: { label: 'Playing shuffle', dot: 'playing', btn: false, btnLabel: '⬡ Shuffle Play' },
+    playing: { label: 'Playing shuffle', dot: 'playing', btn: false, btnLabel: '🔀 Shuffle Play' },
 };
 
 function setStatus(phase) {
@@ -26,7 +26,7 @@ function setInactive() {
     dot.className  = 'dot inactive';
     text.textContent = 'Not on SoundCloud';
     btn.disabled   = true;
-    btn.textContent = '⬡ Shuffle Play';
+    btn.textContent = '🔀 Shuffle Play';
     footer.textContent = 'Open a SoundCloud playlist or likes page';
 }
 
@@ -34,11 +34,10 @@ function setNoButton() {
     dot.className  = 'dot inactive';
     text.textContent = 'No shuffleable page';
     btn.disabled   = true;
-    btn.textContent = '⬡ Shuffle Play';
+    btn.textContent = '🔀 Shuffle Play';
     footer.textContent = 'Navigate to a playlist, likes, or discover page';
 }
 
-// ── Query the content script for current status ──
 async function refresh() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -58,7 +57,6 @@ async function refresh() {
     }
 }
 
-// ── Shuffle button click ──
 btn.addEventListener('click', async () => {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -66,7 +64,6 @@ btn.addEventListener('click', async () => {
 
         const res = await chrome.tabs.sendMessage(tab.id, { type: 'shuffleNow' });
         if (res?.ok) {
-            // Re-query after a short delay to get updated phase
             setTimeout(refresh, 300);
         } else {
             setNoButton();
@@ -76,12 +73,10 @@ btn.addEventListener('click', async () => {
     }
 });
 
-// ── Listen for status broadcasts from content script ──
 chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'statusUpdate') {
         setStatus(msg.phase);
     }
 });
 
-// ── Init ──
 refresh();
