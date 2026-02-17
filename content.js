@@ -8,21 +8,13 @@ const PAGE = Object.freeze({
     DISCOVER: 4,
 });
 
-const BTN_CLASS = 'sc-true-shuffle-btn';
 const SCROLL_TICK_MS = 350;
-const OBSERVER_TIMEOUT_MS = 30_000;
-const OBSERVER_DEBOUNCE_MS = 250;
-const FALLBACK_CHECK_MS = 5_000;
 const QUEUE_SETTLE_MS = 2_000;
 
 const state = {
     phase: 'idle',
     scrollTimer: 0,
     settleTimer: 0,
-    observer: null,
-    observerTimeout: 0,
-    observerDebounce: 0,
-    lastPath: location.pathname,
     abortCtrl: null,
     queueEl: null,
     scrollEl: null,
@@ -123,49 +115,29 @@ function cancelScrollPhase() {
     state.heightEl = null;
 }
 
-function cancelObserver() {
-    if (state.observer) {
-        state.observer.disconnect();
-        state.observer = null;
-    }
-    if (state.observerTimeout) {
-        clearTimeout(state.observerTimeout);
-        state.observerTimeout = 0;
-    }
-    if (state.observerDebounce) {
-        clearTimeout(state.observerDebounce);
-        state.observerDebounce = 0;
-    }
-}
-
-function fullCleanup() {
-    cancelScrollPhase();
-    cancelObserver();
-}
-
 function broadcastStatus() {
     try {
         chrome.runtime.sendMessage({ type: 'statusUpdate', phase: state.phase });
     } catch { }
 }
 
-function scheduleScrollTick(btn) {
+function scheduleScrollTick() {
     if (state.phase !== 'loading') return;
     state.scrollTimer = setTimeout(() => {
         state.scrollTimer = 0;
-        onScrollTick(btn);
+        onScrollTick();
     }, SCROLL_TICK_MS);
 }
 
-function onScrollTick(btn) {
+function onScrollTick() {
     if (state.phase !== 'loading') return;
 
     if (!state.queueEl) state.queueEl = $('.queue');
-    if (!state.queueEl) { scheduleScrollTick(btn); return; }
+    if (!state.queueEl) { scheduleScrollTick(); return; }
 
     if (!state.queueEl.classList.contains('m-visible')) {
         setQueueOpen(true);
-        scheduleScrollTick(btn);
+        scheduleScrollTick();
         return;
     }
 
@@ -180,13 +152,13 @@ function onScrollTick(btn) {
     if ($('.queue__fallback')) {
         clearTimeout(state.scrollTimer);
         state.scrollTimer = 0;
-        performShuffle(btn);
+        performShuffle();
     } else {
-        scheduleScrollTick(btn);
+        scheduleScrollTick();
     }
 }
 
-function performShuffle(btn) {
+function performShuffle() {
     const queueList = $('.queue__itemsList');
     if (queueList) {
         const items = $$('.queueItemView', queueList);
@@ -199,7 +171,6 @@ function performShuffle(btn) {
     }
 
     state.phase = 'playing';
-    updateButtonState(btn, 'idle');
     broadcastStatus();
 
     const shuffleBtn = $('.shuffleControl');
@@ -215,33 +186,9 @@ function performShuffle(btn) {
     if (playCtrl) playCtrl.focus();
 }
 
-function updateButtonState(btn, newState) {
-    if (!btn) return;
-    btn.classList.remove('is-loading', 'is-error');
-
-    switch (newState) {
-        case 'idle':
-            btn.textContent = '🔀 Shuffle Play';
-            btn.title = 'True random shuffle — all tracks';
-            break;
-        case 'loading':
-            btn.classList.add('is-loading');
-            btn.textContent = 'Loading…';
-            btn.title = 'Click to cancel';
-            break;
-        case 'error':
-            btn.classList.add('is-error');
-            btn.textContent = 'Too few tracks';
-            btn.title = '';
-            setTimeout(() => updateButtonState(btn, 'idle'), 3000);
-            break;
-    }
-}
-
-async function onShuffleClick(btn) {
+async function onShuffleClick() {
     if (state.phase === 'loading') {
         cancelScrollPhase();
-        updateButtonState(btn, 'idle');
         broadcastStatus();
         return;
     }
@@ -251,7 +198,8 @@ async function onShuffleClick(btn) {
     const trackList = listSel ? $(listSel) : null;
 
     if (!trackList || trackList.childElementCount < 2) {
-        updateButtonState(btn, 'error');
+        state.phase = 'idle';
+        broadcastStatus();
         return;
     }
 
@@ -259,7 +207,6 @@ async function onShuffleClick(btn) {
     state.abortCtrl = new AbortController();
     const signal = state.abortCtrl.signal;
 
-    updateButtonState(btn, 'loading');
     broadcastStatus();
 
     const children = trackList.children;
@@ -287,119 +234,15 @@ async function onShuffleClick(btn) {
 
         setQueueOpen(true);
         await sleep(QUEUE_SETTLE_MS, signal);
-        scheduleScrollTick(btn);
+        scheduleScrollTick();
 
     } catch (e) {
         if (e.name === 'AbortError') return;
         console.error('[SoundCloud True Shuffle]', e);
         cancelScrollPhase();
-        updateButtonState(btn, 'error');
         broadcastStatus();
     }
 }
-
-function createButton(type) {
-    const btn = document.createElement('button');
-    btn.className = BTN_CLASS + (
-        type === PAGE.LIKES
-            ? ' sc-button sc-button-large'
-            : ' sc-button sc-button-medium'
-    );
-    updateButtonState(btn, 'idle');
-    btn.addEventListener('click', () => onShuffleClick(btn));
-    return btn;
-}
-
-function tryInsertButton() {
-    const type = getPageType();
-    if (type === PAGE.NONE) return true;
-    if ($('.' + BTN_CLASS)) return true;
-
-    let anchor, btn;
-    switch (type) {
-        case PAGE.LIKES:
-            anchor = $('.collectionSection__top');
-            if (anchor?.children[2]) {
-                btn = createButton(type);
-                anchor.insertBefore(btn, anchor.children[2]);
-                return true;
-            }
-            break;
-        case PAGE.USER_LIKES:
-            anchor = $('.userNetworkTabs');
-            if (anchor) {
-                btn = createButton(type);
-                anchor.appendChild(btn);
-                return true;
-            }
-            break;
-        case PAGE.PLAYLIST:
-            anchor = $('.soundActions')?.children[0];
-            if (anchor) {
-                btn = createButton(type);
-                anchor.appendChild(btn);
-                return true;
-            }
-            break;
-        case PAGE.DISCOVER:
-            anchor = $('.systemPlaylistDetails__controls');
-            if (anchor) {
-                btn = createButton(type);
-                anchor.appendChild(btn);
-                return true;
-            }
-            break;
-    }
-    return false;
-}
-
-function startInsertionObserver() {
-    cancelObserver();
-    if (tryInsertButton()) return;
-
-    state.observer = new MutationObserver(() => {
-        if (state.observerDebounce) return;
-        state.observerDebounce = setTimeout(() => {
-            state.observerDebounce = 0;
-            if (tryInsertButton()) cancelObserver();
-        }, OBSERVER_DEBOUNCE_MS);
-    });
-
-    state.observer.observe(document.body, { childList: true, subtree: true });
-    state.observerTimeout = setTimeout(cancelObserver, OBSERVER_TIMEOUT_MS);
-}
-
-function onNavigate() {
-    const path = location.pathname;
-    if (path === state.lastPath) return;
-    state.lastPath = path;
-
-    cancelScrollPhase();
-
-    const old = $('.' + BTN_CLASS);
-    if (old) old.remove();
-
-    startInsertionObserver();
-}
-
-const origPush = history.pushState;
-const origReplace = history.replaceState;
-
-history.pushState = function (...args) {
-    origPush.apply(this, args);
-    onNavigate();
-};
-history.replaceState = function (...args) {
-    origReplace.apply(this, args);
-    onNavigate();
-};
-window.addEventListener('popstate', onNavigate);
-
-setInterval(() => {
-    if (state.phase !== 'idle') return;
-    if (getPageType() === PAGE.NONE) return;
-    if (!$('.' + BTN_CLASS)) startInsertionObserver();
-}, FALLBACK_CHECK_MS);
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg.type === 'getStatus') {
@@ -407,15 +250,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         return;
     }
     if (msg.type === 'shuffleNow') {
-        const btn = $('.' + BTN_CLASS);
-        if (btn) {
-            onShuffleClick(btn);
-            sendResponse({ ok: true });
-        } else {
-            sendResponse({ ok: false, error: 'No shuffle button on this page' });
+        if (getPageType() === PAGE.NONE) {
+            sendResponse({ ok: false, error: 'Not on a shuffleable page' });
+            return;
         }
+        onShuffleClick();
+        sendResponse({ ok: true });
         return;
     }
 });
-
-startInsertionObserver();

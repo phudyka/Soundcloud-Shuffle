@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "SoundCloud-Shuffle",
-    "version": "3.1",
+    "version": "1.0",
     "description": "True random shuffle for SoundCloud playlists and likes 🔀",
     "permissions": ["activeTab"],
     "action": {
@@ -16,7 +16,6 @@
         {
             "matches": ["https://soundcloud.com/*"],
             "js": ["content.js"],
-            "css": ["style.css"],
             "run_at": "document_end",
             "all_frames": false
         }

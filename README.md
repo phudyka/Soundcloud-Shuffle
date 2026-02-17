@@ -8,7 +8,6 @@ A Chrome extension that brings **true random shuffle** to SoundCloud. Unlike Sou
 - **📋 Full Queue Loading** — Automatically loads your entire queue before shuffling
 - **🎯 Smart Page Detection** — Works on playlists, likes, user likes, and discover pages
 - **⚡ Performance Optimized** — Efficient DOM manipulation with minimal memory footprint
-- **🎨 Native Integration** — Seamlessly integrates with SoundCloud's UI
 - **🔄 Real-time Status** — Visual feedback during loading and playback
 - **⏸️ Cancellable Loading** — Stop the loading process at any time
 
@@ -30,12 +29,14 @@ A Chrome extension that brings **true random shuffle** to SoundCloud. Unlike Sou
    - Click **Load unpacked**
    - Select the `Soundcloud-Shuffle` folder
 
-4. **You're ready!** 🎉
-   - Navigate to SoundCloud and look for the **🔀 Shuffle Play** button
+4. **Pin the extension** 📌
+   - Click the puzzle piece icon (🧩) in your Chrome toolbar
+   - Click the **pin** icon next to **SoundCloud-Shuffle**
+   - The extension icon will now appear permanently in your toolbar
+
+5. **You're ready!** 🎉
 
 ## 📖 Usage
-
-### In-Page Button
 
 1. Navigate to any supported SoundCloud page:
    - Your Likes (`/you/likes`)
@@ -43,19 +44,15 @@ A Chrome extension that brings **true random shuffle** to SoundCloud. Unlike Sou
    - Playlists (`/[username]/sets/[playlist]`)
    - Discover Playlists (`/discover/sets/[playlist]`)
 
-2. Click the **🔀 Shuffle Play** button that appears on the page (Next to the Playlist settings)
+2. **Click the pinned extension icon** in your toolbar — a popup will appear showing:
+   - Current status indicator (Ready / Loading / Playing)
+   - The **🔀 Shuffle Play** button
 
-3. Wait for the extension to load all tracks (progress shown in button)
+3. Click **🔀 Shuffle Play** and wait for the extension to load all tracks
 
 4. Enjoy truly random playback! 🎶
 
-### Extension Popup
-
-Click the extension icon in your toolbar to:
-
-- View current status (Ready, Loading, Playing)
-- Trigger shuffle from the popup
-- See which page type is active
+> **Tip:** If the status shows "Not on SoundCloud", make sure you're on a SoundCloud tab with a playlist or likes page open.
 
 ## 🎯 How It Works
 
@@ -69,9 +66,8 @@ Click the extension icon in your toolbar to:
 ### Architecture
 
 - **Manifest V3** — Modern Chrome extension architecture
-- **Content Script** — Injects shuffle functionality into SoundCloud pages
+- **Content Script** — Handles shuffle logic on SoundCloud pages
 - **Popup Interface** — Standalone control panel with real-time status
-- **Mutation Observer** — Detects SPA navigation and DOM changes
 - **AbortController** — Clean cancellation of async operations
 
 ### Browser Compatibility
@@ -80,23 +76,6 @@ Click the extension icon in your toolbar to:
 - ✅ Edge (Chromium-based)
 - ✅ Brave
 - ✅ Opera (Chromium-based)
-
-## 🎨 Screenshots
-
-The extension adds a native-looking button to SoundCloud pages:
-
-**Likes Page**
-
-- Button appears in the collection header
-
-**Playlist Page**
-
-- Button integrates with sound actions
-
-**Popup Interface**
-
-- Real-time status indicator
-- One-click shuffle activation
 
 ## ⚙️ Configuration
 
@@ -108,21 +87,20 @@ You can modify these constants in `content.js`:
 
 ```javascript
 SCROLL_TICK_MS; // Scroll interval (default: 350ms)
-OBSERVER_TIMEOUT_MS; // Max time to wait for button insertion (default: 30s)
 QUEUE_SETTLE_MS; // Time to wait for queue to stabilize (default: 2s)
 ```
 
 ## 🐛 Troubleshooting
 
-### Button doesn't appear
+### Shuffle button is disabled / "Not on SoundCloud"
 
-- Refresh the SoundCloud page
-- Ensure you're on a supported page type
-- Check that the extension is enabled in `chrome://extensions/`
+- Make sure you're on a SoundCloud tab
+- Navigate to a supported page (playlist, likes, discover)
+- Try refreshing the SoundCloud page
 
 ### Shuffle stops loading
 
-- Click the button again to cancel and retry
+- Click **Cancel** in the popup to abort, then retry
 - Check your internet connection
 - Try refreshing the page
 
@@ -134,7 +112,13 @@ QUEUE_SETTLE_MS; // Time to wait for queue to stabilize (default: 2s)
 
 ## 📝 Changelog
 
-### v3.1 (Current)
+### v4.0 (Current)
+
+- 🔄 Shuffle now triggered exclusively from the pinned extension popup
+- 🧹 Removed in-page button injection for a cleaner experience
+- ⚡ Reduced content script size and overhead
+
+### v3.1
 
 - ✨ Optimized queue loading algorithm
 - 🐛 Fixed SPA navigation detection
